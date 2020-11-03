@@ -39,7 +39,10 @@ CREATE TABLE Comments (
   -- Adjacency List
   -- parent_id         BIGINT,
   -- Path Enumeration
-  path              VARCHAR(1000),
+  -- path              VARCHAR(1000),
+  -- Nested Set
+  -- nsleft            INTEGER NOT NULL,
+  -- nsright           INTEGER NOT NULL,
   author            BIGINT NOT NULL,
   comment_date      TIMESTAMP WITH TIME ZONE NOT NULL,
   comment           TEXT NOT NULL,
@@ -47,6 +50,14 @@ CREATE TABLE Comments (
   -- FOREIGN KEY (parent_id) REFERENCES Comments(comment_id),
   FOREIGN KEY (bug_id) REFERENCES Bugs(bug_id),
   FOREIGN KEY (author) REFERENCES Accounts(account_id)
+);
+
+CREATE TABLE CommentTree (
+  ancestor          BIGINT NOT NULL,
+  descendant        BIGINT NOT NULL,
+  PRIMARY KEY (ancestor, descendant),
+  FOREIGN KEY (ancestor) REFERENCES Comments(comment_id),
+  FOREIGN KEY (descendant) REFERENCES Comments(comment_id)
 );
 
 CREATE TABLE Screenshots (
@@ -110,6 +121,7 @@ AS (
 SELECT * FROM CommentTree WHERE bug_id = 1;
 */
 
+/* Path Enumeration
 INSERT INTO Comments (bug_id, path, author, comment_date, comment)
 VALUES (1, '1/',       1, now(), 'このバグの原因は何かな?'),
        (1, '1/2/',     2, now(), 'ヌルポインターのせいじゃないかな?'),
@@ -121,5 +133,55 @@ VALUES (1, '1/',       1, now(), 'このバグの原因は何かな?'),
 
 SELECT * FROM Comments WHERE '1/4/6/7/' LIKE path || '%';
 SELECT * FROM Comments WHERE path LIKE '1/4/%';
+*/
+
+/* Nested Set
+INSERT INTO Comments (bug_id, nsleft, nsright, author, comment_date, comment)
+VALUES (1,  1, 14,    1, now(), 'このバグの原因は何かな?'),
+       (1,  2,  5,    2, now(), 'ヌルポインターのせいじゃないかな?'),
+       (1,  3,  4,    1, now(), 'そうじゃないよ。それは確認済なんだ。'),
+       (1,  6, 13,    3, now(), '無効な入力を調べてみたら?'),
+       (1,  7,  8,    2, now(), 'そうか、バグの原因はそれだな。'),
+       (1,  9, 12,    1, now(), 'よし、じゃあチェック機能を追加してもらえるかな?'),
+       (1, 10, 11,    3, now(), '了解。修正したよ。');
+
+SELECT c2.*
+FROM Comments c1
+JOIN Comments c2 ON c2.nsleft BETWEEN c1.nsleft AND c1.nsright
+WHERE c1.comment_id = 4;
+
+SELECT c2.*
+FROM Comments c1
+JOIN Comments c2 ON c1.nsleft BETWEEN c2.nsleft AND c2.nsright
+WHERE c1.comment_id = 6;
+*/
+
+INSERT INTO Comments (bug_id, author, comment_date, comment)
+VALUES (1, 1, now(), 'このバグの原因は何かな?'),
+       (1, 2, now(), 'ヌルポインターのせいじゃないかな?'),
+       (1, 1, now(), 'そうじゃないよ。それは確認済なんだ。'),
+       (1, 3, now(), '無効な入力を調べてみたら?'),
+       (1, 2, now(), 'そうか、バグの原因はそれだな。'),
+       (1, 1, now(), 'よし、じゃあチェック機能を追加してもらえるかな?'),
+       (1, 3, now(), '了解。修正したよ。');
+
+INSERT INTO CommentTree (ancestor, descendant)
+VALUES (1,1), (1,2), (1,3), (1,4), (1,5), (1,6), (1,7),
+       (2,2), (2,3),
+       (3,3),
+       (4,4), (4,5), (4,6), (4,7),
+       (5,5),
+       (6,6), (6,7),
+       (7,7);
+
+SELECT c.*
+FROM Comments c
+JOIN CommentTree t ON c.comment_id = t.descendant
+WHERE t.ancestor = 4;
+
+SELECT c.*
+FROM Comments c
+JOIN CommentTree t ON c.comment_id = t.ancestor
+WHERE t.descendant = 6;
 
 EOSQL
