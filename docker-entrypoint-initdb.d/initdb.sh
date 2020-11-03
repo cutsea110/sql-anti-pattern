@@ -36,9 +36,11 @@ CREATE TABLE Bugs (
 CREATE TABLE Comments (
   comment_id        SERIAL PRIMARY KEY,
   bug_id            BIGINT NOT NULL,
+  parent_id         BIGINT,
   author            BIGINT NOT NULL,
   comment_date      TIMESTAMP WITH TIME ZONE NOT NULL,
   comment           TEXT NOT NULL,
+  FOREIGN KEY (parent_id) REFERENCES Comments(comment_id),
   FOREIGN KEY (bug_id) REFERENCES Bugs(bug_id),
   FOREIGN KEY (author) REFERENCES Accounts(account_id)
 );
@@ -71,5 +73,35 @@ CREATE TABLE BugProducts (
   FOREIGN KEY (bug_id) REFERENCES Bugs(bug_id),
   FOREIGN KEY (product_id) REFERENCES Products(product_id)
 );
+
+-- data
+
+INSERT INTO BugStatus (status) VALUES ('NEW');
+
+INSERT INTO Accounts (account_name)
+VALUES ('Fran'), ('Ollie'), ('Kukla');
+
+INSERT INTO Bugs (date_reported, summary, reported_by)
+VALUES (date(now()), 'The Bug', 1);
+
+INSERT INTO Comments (bug_id, parent_id, author, comment_date, comment)
+VALUES (1, NULL, 1, now(), 'このバグの原因は何かな?'),
+       (1, 1,    2, now(), 'ヌルポインターのせいじゃないかな?'),
+       (1, 2,    1, now(), 'そうじゃないよ。それは確認済なんだ。'),
+       (1, 1,    3, now(), '無効な入力を調べてみたら?'),
+       (1, 4,    2, now(), 'そうか、バグの原因はそれだな。'),
+       (1, 4,    1, now(), 'よし、じゃあチェック機能を追加してもらえるかな?'),
+       (1, 6,    3, now(), '了解。修正したよ。');
+
+WITH RECURSIVE CommentTree (comment_id, bug_id, parent_id, author, comment_date, comment, depth)
+AS (
+  -- 基底
+  SELECT c.*, 0 AS depth FROM Comments c WHERE c.parent_id IS NULL
+  UNION ALL
+  -- 帰納
+  SELECT c.*, ct.depth + 1 AS depth FROM CommentTree ct
+  JOIN Comments c ON ct.comment_id = c.parent_id
+)
+SELECT * FROM CommentTree WHERE bug_id = 1;
 
 EOSQL
