@@ -36,11 +36,15 @@ CREATE TABLE Bugs (
 CREATE TABLE Comments (
   comment_id        SERIAL PRIMARY KEY,
   bug_id            BIGINT NOT NULL,
-  parent_id         BIGINT,
+  -- Adjacency List
+  -- parent_id         BIGINT,
+  -- Path Enumeration
+  path              VARCHAR(1000),
   author            BIGINT NOT NULL,
   comment_date      TIMESTAMP WITH TIME ZONE NOT NULL,
   comment           TEXT NOT NULL,
-  FOREIGN KEY (parent_id) REFERENCES Comments(comment_id),
+  -- Adjacency List
+  -- FOREIGN KEY (parent_id) REFERENCES Comments(comment_id),
   FOREIGN KEY (bug_id) REFERENCES Bugs(bug_id),
   FOREIGN KEY (author) REFERENCES Accounts(account_id)
 );
@@ -84,6 +88,7 @@ VALUES ('Fran'), ('Ollie'), ('Kukla');
 INSERT INTO Bugs (date_reported, summary, reported_by)
 VALUES (date(now()), 'The Bug', 1);
 
+/* Adjacency List
 INSERT INTO Comments (bug_id, parent_id, author, comment_date, comment)
 VALUES (1, NULL, 1, now(), 'このバグの原因は何かな?'),
        (1, 1,    2, now(), 'ヌルポインターのせいじゃないかな?'),
@@ -103,5 +108,18 @@ AS (
   JOIN Comments c ON ct.comment_id = c.parent_id
 )
 SELECT * FROM CommentTree WHERE bug_id = 1;
+*/
+
+INSERT INTO Comments (bug_id, path, author, comment_date, comment)
+VALUES (1, '1/', 1, now(), 'このバグの原因は何かな?'),
+       (1, '1/2/',    2, now(), 'ヌルポインターのせいじゃないかな?'),
+       (1, '1/2/3/',    1, now(), 'そうじゃないよ。それは確認済なんだ。'),
+       (1, '1/4/',    3, now(), '無効な入力を調べてみたら?'),
+       (1, '1/4/5/',    2, now(), 'そうか、バグの原因はそれだな。'),
+       (1, '1/4/6/',    1, now(), 'よし、じゃあチェック機能を追加してもらえるかな?'),
+       (1, '1/4/6/7/',    3, now(), '了解。修正したよ。');
+
+SELECT * FROM Comments WHERE '1/4/6/7/' LIKE path || '%';
+SELECT * FROM Comments WHERE path LIKE '1/4/%';
 
 EOSQL
